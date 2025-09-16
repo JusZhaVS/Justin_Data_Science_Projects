@@ -1,41 +1,40 @@
-import sys
-from typing import Dict,Tuple
-
 import pandas as pd
-import numpy as np
 
-def load_data(csv_path: str) -> pd.DataFrame:
-    df = pd.read_csv(csv_path)
+# Load directly, assumes the file is in the same folder as your script/notebook
+df = pd.read_csv("retail_transactions.csv")
 
-    df["transaction_id"] = pd.to_numeric(df["transaction_id"], errors="coerce")
-    df["customer_id"] = pd.to_numeric(df["customer_id"], errors="coerce")
-    df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
-    df["price"] = pd.to_numeric(df["price"], errors="coerce")
-    df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=False)
+# Then continue with cleaning, revenue, etc.
+df["transaction_id"] = pd.to_numeric(df["transaction_id"], errors="coerce")
+df["customer_id"] = pd.to_numeric(df["customer_id"], errors="coerce")
+df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
+df["price"] = pd.to_numeric(df["price"], errors="coerce")
+df["date"] = pd.to_datetime(df["date"], errors="coerce")
 
-    if "product" in df.columns:
-        df["product"] = (
-            df["product"]
-            .astype("string")
-            .str.strip()
-            .str.replace(r"\s+", " ", regex=True)
-            .str.title()
-        )
+# Drop invalid rows
+mask_valid = (
+    df["transaction_id"].notna()
+    & df["customer_id"].notna()
+    & df["date"].notna()
+    & df["quantity"].notna()
+    & df["price"].notna()
+    & (df["quantity"] > 0)
+    & (df["price"] > 0)
+)
+df = df[mask_valid].copy()
 
-    return df
+# Compute revenue
+df["revenue"] = df["quantity"] * df["price"]
 
-def data_quality_report(df: pd.DataFrame) -> Dict:
-    issues = {
-        "missing values": df.isna().sum().to_dict(),
-        "duplicates": int(df.duplicated().sum()),
-        "invalid_quantity": int( ( (df["quantity"] <= 0) | df["quantity"].isna() ).sum()),
-        "invalid_price": int( (df["price"] <= 0 | df["price"].isna()).sum()  ),
-        "invalid_ids": int(
-            (df["transaction_id"].isna() | df["customer_id"].isna()).sum()    
-        ),
-        "invalid_dates": int(df["date"].isna().sum()),
-        "unique_products": sorted(df["product"].dropna().unique().tolist()),
-        "row_count": int(len(df)),
-    }
-    return issues
+# Revenue per product
+print("\nRevenue per product:")
+print(df.groupby("product")["revenue"].sum().reset_index())
 
+# Top 2 customers by spending
+print("\nTop 2 customers by spending:")
+print(
+    df.groupby("customer_id")["revenue"]
+    .sum()
+    .reset_index()
+    .sort_values("revenue", ascending=False)
+    .head(2)
+)
