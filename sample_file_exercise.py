@@ -1,16 +1,16 @@
 import pandas as pd
 
-# Load directly, assumes the file is in the same folder as your script/notebook
+#loading of file
 df = pd.read_csv("retail_transactions.csv")
 
-# Then continue with cleaning, revenue, etc.
+#convert to proper types
 df["transaction_id"] = pd.to_numeric(df["transaction_id"], errors="coerce")
 df["customer_id"] = pd.to_numeric(df["customer_id"], errors="coerce")
 df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
 df["price"] = pd.to_numeric(df["price"], errors="coerce")
 df["date"] = pd.to_datetime(df["date"], errors="coerce")
 
-# Drop invalid rows
+#drop the invalid rows using this filter
 mask_valid = (
     df["transaction_id"].notna()
     & df["customer_id"].notna()
@@ -22,7 +22,7 @@ mask_valid = (
 )
 df = df[mask_valid].copy()
 
-# Compute revenue
+# compute revenue and add it as a new column
 df["revenue"] = df["quantity"] * df["price"]
 
 # Revenue per product
